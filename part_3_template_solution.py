@@ -1,21 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
 from typing import Any
-import utils as u
-import new_utils as nu
-from sklearn.svm import SVC
-from sklearn.metrics import make_scorer, f1_score, precision_score, recall_score
-from sklearn.model_selection import StratifiedKFold, cross_val_predict
-from sklearn.metrics import confusion_matrix
-from sklearn.model_selection import (
-    ShuffleSplit,
-    cross_validate,
-    KFold,
-)
-from sklearn.utils.class_weight import compute_class_weight
-from sklearn.metrics import top_k_accuracy_score
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LogisticRegression
 
 """
    In the first two set of tasks, we will narrowly focus on accuracy - 
@@ -83,77 +68,6 @@ class Section3:
         # Enter code and return the `answer`` dictionary
 
         answer = {}
-       
-        Xtrain_3a1, ytrain_3a1, Xtest_3a1, ytest_3a1 = nu.prepare_custom_data(10000, 2000)
-
-        # Initialize the ShuffleSplit cross-validator
-        shuffle_split = ShuffleSplit(n_splits=5, random_state=42)
-
-        # Initialize and train the classifier
-        clf = LogisticRegression(max_iter=300, random_state=42)
-
-        k_values = [1, 2, 3, 4, 5]
-        train_scores = []
-        test_scores = []
-
-        # Calculate top-k accuracy for each k
-        for k in k_values:
-            train_acc = []
-            test_acc = []
-            for train_index, test_index in shuffle_split.split(Xtrain_3a1):
-                X_train_split, X_test_split = Xtrain_3a1[train_index], Xtrain_3a1[test_index]
-                y_train_split, y_test_split = ytrain_3a1[train_index], ytrain_3a1[test_index]
-
-                # Train the classifier
-                clf.fit(X_train_split, y_train_split)
-
-                # Predict probability scores for training and testing sets
-                prob_train = clf.predict_proba(X_train_split)
-                prob_test = clf.predict_proba(X_test_split)
-
-                # Calculate top-k accuracy for the split
-                score_train_split = top_k_accuracy_score(y_train_split, prob_train, k=k)
-                score_test_split = top_k_accuracy_score(y_test_split, prob_test, k=k)
-
-                train_acc.append(score_train_split)
-                test_acc.append(score_test_split)
-
-            # Average the scores over all splits
-            train_scores.append(np.mean(train_acc))
-            test_scores.append(np.mean(test_acc))
-
-            # Plotting
-        plt.plot(k_values, train_scores, label='Training Data')
-        plt.plot(k_values, test_scores, label='Testing Data')
-        plt.xlabel('Top k')
-        plt.ylabel('Accuracy Score')
-        plt.title('Top-k Accuracy Scores for Training and Testing Sets')
-        plt.legend()
-        plt.show()
-
-        print("Training scores:", train_scores)
-        print("Testing scores:", test_scores)
-
-        answer["1"] = {"score_train": 0.9723555555555556, "score_test": 0.9036}
-        answer["2"] = {"score_train": 0.9926222222222222, "score_test": 0.9574}
-        answer["3"] = {"score_train": 0.9972888888888889, "score_test": 0.9758000000000001}
-        answer["4"] = {"score_train": 0.9988666666666667, "score_test": 0.9870000000000001}
-        answer["5"] = {"score_train": 0.9997111111111112, "score_test": 0.9937999999999999}
-        answer["clf"] = LogisticRegression(max_iter=300, random_state=42)
-        answer["plot_k_vs_score_train"] = plt.plot(k_values, train_scores, label='Training Data'), [
-            (1, 0.9723555555555556), (2, 0.9926222222222222), (3, 0.9972888888888889), (4, 0.9988666666666667),
-            (5, 0.9997111111111112)]
-        answer["plot_k_vs_score_test"] = plt.plot(k_values, test_scores, label='Testing Data'), [(1, 0.9036),
-                                                                                                 (2, 0.9574), (
-                                                                                                 3, 0.9758000000000001),
-                                                                                                 (
-                                                                                                 4, 0.9870000000000001),
-                                                                                                 (
-                                                                                                 5, 0.9937999999999999)]
-        answer[
-            "text_rate_accuracy_change"] = "The accuracy rate of the testing data increased together with the value of k."
-        answer[
-            "text_is_topk_useful_and_why"] = "Certainly, topk is helpful as it assesses how well a classifier performs while evaluating all k predicted classes rather than simply the most likely one."
 
         """
         # `answer` is a dictionary with the following keys:
@@ -198,36 +112,6 @@ class Section3:
         """"""
         # Enter your code and fill the `answer` dictionary
         answer = {}
-        print("Part 3(B) - \n")
-        X, y, Xtest, ytest = u.prepare_data()
-        Xtrain, ytrain = nu.filter_imbalanced_7_9s(X, y)
-        Xtest, ytest = nu.filter_imbalanced_7_9s(Xtest, ytest)
-        Xtrain_test = nu.scale_data(Xtrain)
-        Xtest_test = nu.scale_data(Xtest)
-        # Checking that the labels are integers
-        ytrain_test = nu.scale_data_1(ytrain)
-        ytest_test = nu.scale_data_1(ytest)
-        print("3(B) - Are elements in Xtrain a floating point number and scaled between 0 to 1: " + str(Xtrain_test))
-        print("3(B) - Are elements in a floating point number and scaled between 0 to 1: " + str(Xtest_test))
-        print("3(B) - Are elements in ytrian an integer: " + str(ytrain_test))
-        print("3(B) - Are elements in ytest an integer: " + str(ytest_test))
-        answer = {}
-
-        length_Xtrain1 = len(Xtrain)
-        length_Xtest1 = len(Xtest)
-        length_ytrain1 = len(ytrain)
-        length_ytest1 = len(ytest)
-        max_Xtrain1 = Xtrain.max()
-        max_Xtest1 = Xtest.max()
-        print(
-            f"3(B) - Length of Xtrain, Xtest, ytrain, ytest is: {length_Xtrain1}, {length_Xtest1}, {length_ytrain1}, {length_ytest1}")
-        print(f"3(B) - Max value of Xtrain and Xtest is: {max_Xtrain1}, {max_Xtest1}")
-        answer["length_Xtrain"] = 6860  # Number of samples
-        answer["length_Xtest"] = 1129
-        answer["length_ytrain"] = 6860
-        answer["length_ytest"] = 1129
-        answer["max_Xtrain"] = 1
-        answer["max_Xtest"] = 1
 
         # Answer is a dictionary with the same keys as part 1.B
 
@@ -251,58 +135,9 @@ class Section3:
         ytest: NDArray[np.int32],
     ) -> dict[str, Any]:
         """"""
-        # Part 3(c)
-        print("Part 3(C) - \n")
-
-        def stratified_kfold():
-            return StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
-        # Define a function to train a classifier with cross-validation
-        def train_classifier_with_cv(Xtrain, ytrain, clf):
-            # Define scoring metrics
-            scoring = {'accuracy': 'accuracy', 'f1_score': make_scorer(f1_score, average='macro'),
-                       'precision': make_scorer(precision_score, average='macro'),
-                       'recall': make_scorer(recall_score, average='macro')}
-            # Perform cross-validation
-            scores = cross_validate(clf, Xtrain, ytrain, cv=stratified_kfold(), scoring=scoring)
-            # Print the mean and std of scores
-            u.print_cv_result_dict(scores)
-            return scores
-
-        X, y, Xtest, ytest = u.prepare_data()
-        Xtrain, ytrain = nu.filter_imbalanced_7_9s(X, y)
-        Xtest, ytest = nu.filter_imbalanced_7_9s(Xtest, ytest)
-
-        # Train SVC with cross-validation
-        clf_svc = SVC(random_state=42)
-        scores_svc = train_classifier_with_cv(Xtrain, ytrain, clf_svc)
-
-        # Train the classifier on all training data
-        clf_svc.fit(Xtrain, ytrain)
-
-        # Plot confusion matrix for the test data
-        y_pred_svc_train = clf_svc.predict(Xtrain)
-        y_pred_svc_test = clf_svc.predict(Xtest)
-        cm_svc_train = confusion_matrix(ytrain, y_pred_svc_train)
-        cm_svc_test = confusion_matrix(ytest, y_pred_svc_test)
-        print("Confusion matrix for training data: \n")
-        print(cm_svc_train)
-        print("Confusion matrix for testing data:")
-        print(cm_svc_test)
 
         # Enter your code and fill the `answer` dictionary
         answer = {}
-        answer["scores"] = {'mean_accuracy': 0.991399416909621, 'mean_recall': 0.9610675555138256,
-                            'mean_precision': 0.9842783011442116, 'mean_f1': 0.9721517857250799,
-                            'std_accuracy': 0.0016874397817478592, 'std_recall': 0.011449940491256092,
-                            'std_precison': 0.00779698019475328, 'std_f1': 0.005591841444297839}
-        answer["cv"] = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-        answer["clf"] = SVC(random_state=42)
-        answer["is_precision_higher_than_recall"] = True
-        answer[
-            "explain_is_precision_higher_than_recall"] = "Because the model performs better at accurately predicting positive occurrences out of all anticipated positives (precision) than it does at identifying all actual positives (recall), precision is greater than recall. This may occur in datasets that are unbalanced, meaning that false positive costs are more efficiently minimized than false negative costs."
-        answer["confusion_matrix_train"] = confusion_matrix(ytrain, y_pred_svc_train)
-        answer["confusion_matrix_train"] = confusion_matrix(ytest, y_pred_svc_test)
 
         """
         Answer is a dictionary with the following keys: 
@@ -342,60 +177,6 @@ class Section3:
         """"""
         # Enter your code and fill the `answer` dictionary
         answer = {}
-        print("Part 3(D) - \n")
-
-        def stratified_kfold():
-            return StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
-        def train_classifier_with_weighted_cv(Xtrain, ytrain, clf):
-            # Compute class weights
-            class_weights = compute_class_weight('balanced', classes=np.unique(ytrain), y=ytrain)
-            class_weight_dict = dict(enumerate(class_weights))
-            print("Class weights:", class_weight_dict)
-            scoring_1 = {'accuracy': 'accuracy', 'f1_score': make_scorer(f1_score, average='macro'),
-                         'precision': make_scorer(precision_score, average='macro'),
-                         'recall': make_scorer(recall_score, average='macro')}
-            # cross-validation
-            scores = cross_validate(clf, Xtrain, ytrain, cv=stratified_kfold(), scoring=scoring_1,
-                                    fit_params={'sample_weight': [class_weight_dict[y] for y in ytrain]})
-            # Print the mean and std of scores
-            u.print_cv_result_dict(scores)
-            return scores
-
-        X, y, Xtest, ytest = u.prepare_data()
-        Xtrain, ytrain = nu.filter_imbalanced_7_9s(X, y)
-        Xtest, ytest = nu.filter_imbalanced_7_9s(Xtest, ytest)
-
-        # Train SVC with cross-validation using weighted loss function
-        clf_svc_weighted = SVC(random_state=42)
-        scores_svc_weighted = train_classifier_with_weighted_cv(Xtrain, ytrain, clf_svc_weighted)
-
-        # Train the classifier on all training data
-        clf_svc_weighted.fit(Xtrain, ytrain)
-
-        # Plot confusion matrix for the test data
-        y_pred_svc_train1 = clf_svc_weighted.predict(Xtrain)
-        y_pred_svc_test1 = clf_svc_weighted.predict(Xtest)
-        cm_svc_train1 = confusion_matrix(ytrain, y_pred_svc_train1)
-        cm_svc_test1 = confusion_matrix(ytest, y_pred_svc_test1)
-        print("Confusion matrix for training data: \n")
-        print(cm_svc_train1)
-        print("Confusion matrix for testing data:")
-        print(cm_svc_test1)
-
-        answer["scores"] = {'mean_accuracy': 0.9897959183673469, 'mean_recall': 0.9769212713018168,
-                            'mean_precision': 0.9606758953497522, 'mean_f1': 0.9684275839262299,
-                            'std_accuracy': 0.0028039918457246765, 'std_recall': 0.009824197849573576,
-                            'std_precison': 0.013480770822895392, 'std_f1': 0.008457932563265994}
-        answer["cv"] = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-        answer["clf"] = SVC(random_state=42)
-        answer["class_weights"] = {'0': 0.547486033519553, '1': 5.764705882352941}
-        answer["confusion_matrix_train"] = confusion_matrix(ytrain, y_pred_svc_train1)
-        answer["confusion_matrix_test"] = confusion_matrix(ytest, y_pred_svc_test1)
-        answer[
-            "explain_purpose_of_class_weights"] = "In classification difficulties, class imbalance is addressed by using class weights."
-        answer[
-            "explain_performance_difference"] = "The SVM classifier performs better when class weights are included, as seen by increased recall, F1 score, and overall accuracy. This is especially true when accurately detecting positive occurrences. However, applying class weights results in a minor drop in accuracy. This trade-off implies that there could be a tiny rise in false positives even while class weights aid in more accurately detecting instances of minority classes."
 
         """
         Answer is a dictionary with the following keys: 
