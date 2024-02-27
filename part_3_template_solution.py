@@ -1,21 +1,14 @@
 import numpy as np
 from numpy.typing import NDArray
 from typing import Any
-import new_utils as nu
 import utils as u
-
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from part_1_template_solution import Section1 as part1
-from part_2_template_solution import Section2 as part2
-
-from sklearn.model_selection import cross_validate
-from sklearn.metrics import confusion_matrix, top_k_accuracy_score
-from sklearn.utils.class_weight import compute_class_weight
-
-from sklearn.model_selection import StratifiedKFold
+import new_utils as nu
 from sklearn.svm import SVC
-import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix,make_scorer, f1_score,accuracy_score, recall_score,precision_score,top_k_accuracy_score
+from sklearn.utils.class_weight import compute_class_weight
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold,cross_val_score,ShuffleSplit
+
 """
    In the first two set of tasks, we will narrowly focus on accuracy - 
    what fraction of our predictions were correct. However, there are several 
@@ -33,8 +26,6 @@ class Section3:
     ):
         self.seed = seed
         self.normalize = normalize
-        self.part1 = part1(seed=seed, frac_train=frac_train)
-        self.part2 = part2(seed=seed, frac_train=frac_train)
 
     def analyze_class_distribution(self, y: NDArray[np.int32]) -> dict[str, Any]:
         """
@@ -53,10 +44,13 @@ class Section3:
         print(f"{uniq=}")
         print(f"{counts=}")
         print(f"{np.sum(counts)=}")
+        c={}
+        for i,j in enumerate(counts):
+            c[uniq[i]]=j
 
         return {
-            "class_counts": {},  # Replace with actual class counts
-            "num_classes": 0,  # Replace with the actual number of classes
+            "class_counts": c, #{counts},  # Replace with actual class counts
+            "num_classes": uniq,  # Replace with the actual number of classes
         }
 
     # --------------------------------------------------------------------------
@@ -80,61 +74,49 @@ class Section3:
         NDArray[np.floating],
         NDArray[np.int32],
     ]:
-        
+        """ """
         # Enter code and return the `answer`` dictionary
 
         answer = {}
-        counts_train = np.unique(ytrain, return_counts=True)
-        counts_test = np.unique(ytest, return_counts=True)
-        print("counts_train: ", counts_train)
-        print("counts_test: ", counts_test)
-        print()
-
-        self.is_int = nu.check_labels(ytrain)
-        self.is_int = nu.check_labels(ytrain)
-        self.dist_dict = self.analyze_class_distribution(
-            ytrain.astype(np.int32)
-        )  
-        
-        clf = LogisticRegression(
-                random_state=self.seed, multi_class="multinomial", max_iter=300
-            )
+        clf=LogisticRegression(random_state=self.seed,max_iter=300)
+        cv=ShuffleSplit(n_splits=5,random_state=self.seed)
+# Placeholder for CV scores
+        cv_scores = {k: [] for k in range(1, 6)}
+        # Placeholder for test set scores
+        test_scores = {k: None for k in range(1, 6)}
+        # Define custom scorer function to calculate top-k accuracy
+        def top_k_accuracy_scorer(k):
+            return make_scorer(top_k_accuracy_score, needs_proba=True, k=k)
+        # Calculate CV scores for k=1 to 5
+        for k in range(1, 6):
+            cv_score = cross_val_score(clf, Xtrain, ytrain, cv=cv, scoring=top_k_accuracy_scorer(k))
+            cv_scores[k] = cv_score.mean()
+        # Train the model on the entire training data and evaluate on the test set
         clf.fit(Xtrain, ytrain)
-        
-        ytrain_pred = clf.predict_proba(Xtrain)
-        ytest_pred = clf.predict_proba(Xtest)
+        for k in range(1, 6):
+            y_test_proba = clf.predict_proba(Xtest)
+            test_scores[k] = top_k_accuracy_score(ytest, y_test_proba, k=k)
+        #answer['score_train']=cv_scores
+        #answer['score_test']=test_scores
+        answer['clf']=clf
+        tup_train=[]
+        tup_test=[]
+        for i in cv_scores.keys():
+            tup_train.append((i,cv_scores[i]))
+        for i in test_scores.keys():
+            tup_test.append((i,test_scores[i]))
 
-        topk = [k for k in range(1, 6)]
-        plot_scores_test = []
-        plot_scores_train = []
+        answer['plot_k_vs_score_train']=tup_train
+        answer['plot_k_vs_score_test']=tup_test
+        answer['text_rate_accuracy_change']="The pace of accuracy enhancement on the test set shows a significant increase (approximately 0.05) from k = 1 to k = 2. Subsequently, from k = 3 to k = 5, the rate of improvement slows down notably, demonstrating a relatively minor change (approximately 0.001)."
+        answer['text_is_topk_useful_and_why']="In this context, the top_k_accuracy score doesn't offer much valuable insight since our dataset doesn't align with its ideal conditions. This metric is more suitable for scenarios with balanced datasets and multiple classes. However, our current problem doesn't meet these criteria."
+        for i in cv_scores.keys():
+            if i not in answer:
+                answer[i]={"score_train":cv_scores[i],"score_test":test_scores[i]}
+        #print('Part A answer boi')
+        #As the k increases the rate of accuracy change also increases in positive direction
+        #print(answer)
 
-        for k in topk:
-            topk_dict = {}
-            nb_unique, counts = np.unique(ytest, return_counts=True)
-
-            # Calculate top-k accuracy score for both training and test sets
-            score_train = top_k_accuracy_score(ytrain, ytrain_pred, normalize=True, k=k)
-            score_test = top_k_accuracy_score(ytest, ytest_pred, normalize=True, k=k)
-            topk_dict["score_train"] = score_train
-            topk_dict["score_test"] = score_test
-            answer[k] = topk_dict
-            plot_scores_test.append((k, score_test))
-            plot_scores_train.append((k, score_train))
-
-        # Store the trained classifier in the answer dictionary
-        answer["clf"] = clf
-
-        # Store the k vs. score plots in the answer dictionary
-        answer["plot_k_vs_score_train"] = plot_scores_train
-        answer["plot_k_vs_score_test"] = plot_scores_test
-
-        #plt.plot(Xtrain, ytrain)
-        #plt.plot(Xtest, ytest)
-        #plt.show()
-
-        # explanation
-        answer["text_rate_accuracy_change"] = "The positive and consistent improvement in accuracy with increasing k for testing data indicates the model's enhanced ability to predict the top-k classes."
-        answer["text_is_topk_useful_and_why"] = "The top-k accuracy metric proves valuable in assessing performance beyond traditional accuracy, offering insights into the model's effectiveness in capturing relevant patterns and making accurate predictions across a broader set of likely classes."
         """
         # `answer` is a dictionary with the following keys:
         - integers for each topk (1,2,3,4,5)
@@ -159,7 +141,8 @@ class Section3:
 
     # --------------------------------------------------------------------------
     """
-    B. Repeat part 1.B but return an imbalanced dataset consisting of 90% of all 9s removed.  Also convert the 7s to 0s and 9s to 1s.
+    B. Repeat part 1.B but return an imbalanced dataset consisting of 90% of all 9s removed. 
+    Also convert the 7s to 0s and 9s to 1s.
     """
 
     def partB(
@@ -175,41 +158,29 @@ class Section3:
         NDArray[np.floating],
         NDArray[np.int32],
     ]:
+        """"""
         answer = {}
-        """
-        seven_nine_idx = (y == 7) | (y == 9)
-        X = X[seven_nine_idx, :]
-        y = y[seven_nine_idx]
-
-        frac_to_remove = 0.9
-        X, y = nu.filter_9s_convert_to_01(X, y, frac=frac_to_remove)
-        Xtest, ytest = nu.filter_9s_convert_to_01(
-            Xtest, ytest, frac=frac_to_remove
-        )
-        """
-        #X,y,Xtest,ytest = u.prepare_data()
-        X,y = nu.filter_imbalanced_7_9s(X, y)
-        Xtest,ytest = nu.filter_imbalanced_7_9s(Xtest, ytest)
-
-        Xtrain_test = nu.scale_data(X)
-        Xtest_test = nu.scale_data(Xtest)
-
-        # Checking that the labels are integers
-        ytrain_test = nu.scale_data_1(y)
-        ytest_test = nu.scale_data_1(ytest)
-
-        print("3(B) - Are elements in Xtrain a floating point number and scaled between 0 to 1:" +str(Xtrain_test))
-        print("3(B) - Are elements in a floating point number and scaled between 0 to 1:" +str(Xtest_test))
-        print("3(B) - Are elements in ytrian an integer:" +str(ytrain_test))
-        print("3(B) - Are elements in ytest an integer:" +str(ytest_test))
-
+        #X, y, Xtest, ytest = u.prepare_data()
+        X, y = u.filter_out_7_9s(X, y)
+        Xtest, ytest = u.filter_out_7_9s(Xtest, ytest)
+        X,y=nu.remove_90_9s(X,y)
+        Xtest,ytest=nu.remove_90_9s(Xtest,ytest)
         # Answer is a dictionary with the same keys as part 1.B
-        answer["length_X"] = len(X)
+        X,y=nu.convert_7_0(X,y)
+        Xtest,ytest=nu.convert_7_0(Xtest,ytest)
+        X,y=nu.convert_9_1(X,y)
+        Xtest,ytest=nu.convert_9_1(Xtest,ytest)
+        # print('Part B frpm Question 3')
+        uniq, counts_class = np.unique(y, return_counts=True)
+        uniq2,counts_class_test=np.unique(ytest,return_counts=True)      
+        answer["length_Xtrain"] = len(X)  # Number of samples
         answer["length_Xtest"] = len(Xtest)
-        answer["length_y"] = len(y)
+        answer["length_ytrain"] = len(y)
         answer["length_ytest"] = len(ytest)
-        answer["max_X"] = np.max(X)
+        answer["max_Xtrain"] = np.max(X)
         answer["max_Xtest"] = np.max(Xtest)
+        # print(answer)
+        # print('*'*30)
         return answer, X, y, Xtest, ytest
 
     # --------------------------------------------------------------------------
@@ -229,55 +200,41 @@ class Section3:
         Xtest: NDArray[np.floating],
         ytest: NDArray[np.int32],
     ) -> dict[str, Any]:
-    
-        # Enter your code and fill the `answer` dictionary
-        n_splits = 5
-        clf = SVC(random_state=self.seed)
-
-        cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=self.seed)
-
-        def cross_validate_metric(score_type: str):
-            score = ["accuracy", "recall", "precision", "f1"]
-            cv_scores = cross_validate(
-                clf, X, y, scoring=score, cv=cv, return_train_score=False
-            )
-            #cv_scores = u.train_simple_classifier_with_cv(Xtrain=X, ytrain=y, clf=clf, cv=cv)
-            scores = {
-                "mean_accuracy": cv_scores["test_accuracy"].mean(),
-                "mean_recall": cv_scores["test_recall"].mean(),
-                "mean_precision": cv_scores["test_precision"].mean(),
-                "mean_f1": cv_scores["test_f1"].mean(),
-                "std_accuracy": cv_scores["test_accuracy"].std(),
-                "std_recall": cv_scores["test_recall"].std(),
-                "std_precision": cv_scores["test_precision"].std(),
-                "std_f1": cv_scores["test_f1"].std(),
-            }
-            return scores
-
-        # scores_macro = cross_validate_metric(score_type="macro")
-        scores = cross_validate_metric(score_type="macro")
-
-        # Train on all the data
-        clf.fit(X, y)
-
-        ytrain_pred = clf.predict(X)
-        ytest_pred = clf.predict(Xtest)
-        conf_mat_train = confusion_matrix(y, ytrain_pred)
-        conf_mat_test = confusion_matrix(ytest, ytest_pred)
-
-        answer = {}
-        answer["scores"] = scores
-        answer["cv"] = cv
-        answer["clf"] = clf
-        answer["is_precision_higher_than_recall"] = (
-            scores["mean_precision"] > scores["mean_recall"]
-        )
-        answer["explain_is_precision_higher_than_recall"] = "Yes, this indicates that, on average, the model tends to be more accurate in its positive predictions (less false positives) compared to its ability to capture all positive instances (more false negatives)."
-        answer["confusion_matrix_train"] = conf_mat_train  
-        answer["confusion_matrix_test"] = conf_mat_test  
-
-        return answer
-
+        """"""
+        # print()
+        # print('Part C')
+        answer={}
+        clf=SVC(random_state=self.seed,kernel='linear')
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=self.seed)
+        #print('Done caas')
+        scoring = {'f1': make_scorer(f1_score, average='macro'),
+           'precision': make_scorer(precision_score, average='macro'),
+           'recall': make_scorer(recall_score, average='macro'),
+           'accuracy':'accuracy'}
+        scores_cv = {metric: cross_val_score(clf, X, y, scoring=scoring[metric], cv=cv)
+          for metric in scoring}
+        scores_cv_stra={}
+        scores_cv_stra['mean_accuracy']=np.mean(scores_cv['accuracy'])
+        scores_cv_stra['mean_recall']=np.mean(scores_cv['recall'])
+        scores_cv_stra['mean_precision']=np.mean(scores_cv['precision'])
+        scores_cv_stra['mean_f1']=np.mean(scores_cv['f1'])
+        scores_cv_stra['std_accuracy']=np.std(scores_cv['accuracy'])
+        scores_cv_stra['std_recall']=np.std(scores_cv['recall'])
+        scores_cv_stra['std_precision']=np.std(scores_cv['precision'])
+        scores_cv_stra['std_f1']=np.std(scores_cv['f1'])
+        answer["scores"]=scores_cv_stra
+        answer['cv']=cv
+        answer['clf']=clf
+        if scores_cv['precision'].mean() > scores_cv['recall'].mean():
+            answer["is_precision_higher_than_recall"]=1
+        else:
+            answer["is_precision_higher_than_recall"]=0
+        answer['explain_is_precision_higher_than_recall']='Testing purpose'
+        clf.fit(X,y)
+        y_pred_train=clf.predict(X)
+        answer['confusion_matrix_train']=confusion_matrix(y_pred_train,y)
+        y_pred_test=clf.predict(Xtest)
+        answer['confusion_matrix_test']=confusion_matrix(y_pred_test,ytest)
         """
         Answer is a dictionary with the following keys: 
         - "scores" : a dictionary with the mean/std of the F1 score, precision, and recall
@@ -298,10 +255,16 @@ class Section3:
         - "std_precision" : the std precision
         - "std_f1" : the std f1
         """
+        # print("Part C answer")
+        # print(answer)
+        return answer
 
     # --------------------------------------------------------------------------
     """
-    D. Repeat the same steps as part 3.C but apply a weighted loss function (see the class_weights parameter).  Print out the class weights, and comment on the performance difference. Use the `compute_class_weight` argument of the estimator to compute the class weights. 
+    D. Repeat the same steps as part 3.C but apply a weighted loss function 
+    (see the class_weights parameter).  Print out the class weights, and comment on the 
+    performance difference. 
+    Use the `compute_class_weight` argument of the estimator to compute the class weights. 
     """
 
     def partD(
@@ -311,57 +274,43 @@ class Section3:
         Xtest: NDArray[np.floating],
         ytest: NDArray[np.int32],
     ) -> dict[str, Any]:
-        
-        # Enter your code and fill the `answer` dictionary
+        """"""
+        answer={}
+        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y), y=y)
+        class_weight_dict = dict(enumerate(class_weights))
+        clf=SVC(random_state=self.seed,kernel='linear',class_weight=class_weight_dict)
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=self.seed)
+        scoring = {'f1': make_scorer(f1_score, average='macro'),
+           'precision': make_scorer(precision_score, average='macro'),
+           'recall': make_scorer(recall_score, average='macro'),
+           'accuracy':'accuracy'}
+        scores_cv = {metric: cross_val_score(clf, X, y, scoring=scoring[metric], cv=cv)
+          for metric in scoring}
+        scores_cv_stra={}
+        scores_cv_stra['mean_accuracy']=np.mean(scores_cv['accuracy'])
+        scores_cv_stra['mean_recall']=np.mean(scores_cv['recall'])
+        scores_cv_stra['mean_precision']=np.mean(scores_cv['precision'])
+        scores_cv_stra['mean_f1']=np.mean(scores_cv['f1'])
+        scores_cv_stra['std_accuracy']=np.std(scores_cv['accuracy'])
+        scores_cv_stra['std_recall']=np.std(scores_cv['recall'])
+        scores_cv_stra['std_precision']=np.std(scores_cv['precision'])
+        scores_cv_stra['std_f1']=np.std(scores_cv['f1'])
+        answer["scores"]=scores_cv_stra
+        answer['cv']=cv
+        answer['clf']=clf
+        if scores_cv['precision'].mean() > scores_cv['recall'].mean():
+            answer["is_precision_higher_than_recall"]=1
+        else:
+            answer["is_precision_higher_than_recall"]=0
+        answer['explain_is_precision_higher_than_recall']='Testing D'
+        clf.fit(X,y)
+        answer['class_weights']=class_weight_dict
+        y_pred_train=clf.predict(X)
+        answer['confusion_matrix_train']=confusion_matrix(y_pred_train,y)
+        y_pred_test=clf.predict(Xtest)
+        answer['confusion_matrix_test']=confusion_matrix(y_pred_test,ytest)
 
-        n_splits = 5
-        clf = SVC(random_state=self.seed, class_weight="balanced")
-        
-        cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=self.seed)
 
-        def cross_validate_metric(score_type: str):
-            score = ["accuracy", "recall", "precision", "f1"]
-            cv_scores = cross_validate(
-                clf, X, y, scoring=score, cv=cv, return_train_score=False
-            )
-
-            scores = {
-                "mean_accuracy": cv_scores["test_accuracy"].mean(),
-                "mean_recall": cv_scores["test_recall"].mean(),
-                "mean_precision": cv_scores["test_precision"].mean(),
-                "mean_f1": cv_scores["test_f1"].mean(),
-                "std_accuracy": cv_scores["test_accuracy"].std(),
-                "std_recall": cv_scores["test_recall"].std(),
-                "std_precision": cv_scores["test_precision"].std(),
-                "std_f1": cv_scores["test_f1"].std(),
-            }
-            return scores
-
-        scores = cross_validate_metric(score_type="macro")
-
-        # Train on all the data
-        clf.fit(X, y)
-
-        ytrain_pred = clf.predict(X)
-        ytest_pred = clf.predict(Xtest)
-        conf_mat_train = confusion_matrix(y, ytrain_pred)
-        conf_mat_test = confusion_matrix(ytest, ytest_pred)
-
-        answer = {}
-        answer["scores"] = scores
-        answer["cv"] = cv
-        answer["clf"] = clf
-        answer['class_weights']= compute_class_weight(
-            class_weight="balanced", classes=np.unique(y), y=y
-        )
-        
-        answer["confusion_matrix_train"] = conf_mat_train  
-        answer["confusion_matrix_test"] = conf_mat_test  
-        answer["explain_purpose_of_class_weights"] = "The class weights are used to address class imbalance by penalizing misclassifications of the minority class more heavily."
-        answer["explain_performance_difference"] = "The performance difference observed with class weights reflects the model's improved ability to generalize to the minority class, leading to more balanced performance metrics across all classes."
-        return answer
-
-        
         """
         Answer is a dictionary with the following keys: 
         - "scores" : a dictionary with the mean/std of the F1 score, precision, and recall
@@ -385,3 +334,8 @@ class Section3:
 
         Recall: The scores are based on the results of the cross-validation step
         """
+        # print('*'*30)
+        # print('Part D answer')
+        # print('*'*30)
+        # print(answer)
+        return answer
