@@ -111,8 +111,8 @@ class Section3:
         answer["clf"] = clf
         answer["plot_k_vs_score_train"] = tuple_plot_scores_train
         answer["plot_k_vs_score_test"] = tuple_plot_scores_test
-        answer["text_rate_accuracy_change"] = "The model consistently demonstrates positive improvements in accuracy as the value of k increases for the testing data, suggesting that the model becomes increasingly proficient in predicting the top-k classes"
-        answer["text_is_topk_useful_and_why"] = "The top-k accuracy metric is valuable for evaluating the model's performance as it assesses its capability to make accurate predictions across a broader spectrum of potential classes. This metric extends beyond conventional accuracy measures, providing a deeper understanding of the model's effectiveness in capturing relevant patterns."
+        answer["text_rate_accuracy_change"] = "As the value of k grows for the testing data, the model continuously shows positive improvements in accuracy, indicating that the model gets better at predicting the top-k classes."
+        answer["text_is_topk_useful_and_why"] = "When assessing the model's performance, the top-k accuracy measure is useful since it evaluates the model's ability to produce correct predictions over a wider range of possible classes. This statistic goes beyond traditional measurements of accuracy and offers a more profound insight into how well the model captures pertinent patterns."
 
         """
         # `answer` is a dictionary with the following keys:
@@ -330,8 +330,8 @@ class Section3:
         answer['class_weights'] = class_weights
         answer['confusion_matrix_train'] = confusion_matrix_train_wt
         answer['confusion_matrix_test'] = confusion_matrix_test_wt
-        answer['explain_purpose_of_class_weights'] = "The class weights are used to address class imbalance by penalizing misclassifications of the minority class more heavily."
-        answer['explain_performance_difference'] = "The performance difference observed with class weights reflects the model's improved ability to generalize to the minority class, leading to more balanced performance metrics across all classes."
+        answer['explain_purpose_of_class_weights'] = "Class weights are used to penalize misclassifications of the minority class more severely, hence addressing the issue of class imbalance."
+        answer['explain_performance_difference'] = "The enhanced capacity of the model to generalize to the minority class is reflected in the observed performance difference with class weights, which results in more balanced performance metrics across all classes."
 
         """
         Answer is a dictionary with the following keys: 
